@@ -4,6 +4,8 @@ PaperRepo Evidence-RAG Agent is a minimal Streamlit demo for checking evidence a
 
 The project is built for an early-stage workflow: upload one paper, provide one repository URL, ask a question, and inspect the retrieved evidence before any full LLM answer generation is introduced.
 
+It targets the scenario of information verification for AI paper reproduction, using a dual-source Evidence-RAG Agent over paper PDFs and GitHub repositories.
+
 ## Project Background
 
 Research code repositories often claim to implement a paper, but validating that claim usually requires reading both the manuscript and the code. This demo creates a small, local evidence pipeline that can parse both sources, retrieve relevant snippets, and produce a conservative answer that is bound to visible evidence.
