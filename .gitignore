@@ -5,6 +5,7 @@
 .uploads/
 .repos/
 .chroma/
+.llm_cache/
 __pycache__/
 .pytest_cache/
 *.py[cod]

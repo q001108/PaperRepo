@@ -52,6 +52,37 @@ def _clean_metadata(metadata: dict[str, object]) -> dict[str, str | int | float 
     }
 
 
+def _repo_file_role(file_path: str) -> str:
+    normalized_path = file_path.replace("\\", "/").lower().strip("/")
+    if normalized_path in {"readme", "readme.md"}:
+        return "project overview and official usage"
+    if normalized_path == "models/mlic.py":
+        return "core model and paper method implementation"
+    if normalized_path == "train.py":
+        return "training entrypoint"
+    if normalized_path == "models/factory.py":
+        return "model factory and registration"
+    if normalized_path == "embedding.py":
+        return "label embedding preparation"
+    if normalized_path in {"evaluate.py", "infer.py"}:
+        return "evaluation or inference entrypoint"
+    if normalized_path.startswith("scripts/"):
+        return "dataset preprocessing script"
+    if normalized_path.startswith("models/"):
+        return "model code"
+    return "repository source file"
+
+
+def _repo_document_for_index(chunk: RepoChunk) -> str:
+    language = chunk.language or "text"
+    return (
+        f"File: {chunk.file_path}\n"
+        f"Role: {_repo_file_role(chunk.file_path)}\n"
+        f"Language: {language}\n\n"
+        f"{chunk.content}"
+    )
+
+
 def build_index(
     paper_chunks: list[PaperChunk],
     repo_chunks: list[RepoChunk],
@@ -83,7 +114,9 @@ def build_index(
                     "repo_url": repo_url,
                     "repo_commit_hash": repo_commit_hash or "",
                     "page_num": chunk.page_num,
+                    "page_end": chunk.page_end or chunk.page_num,
                     "section_title": chunk.section_title or "",
+                    "chunking_strategy": chunk.chunking_strategy,
                     "source_file": chunk.source_file or "",
                 }
             )
@@ -91,7 +124,7 @@ def build_index(
 
     for chunk in repo_chunks:
         ids.append(f"{current_dataset_id}:{chunk.chunk_id}")
-        documents.append(chunk.content)
+        documents.append(_repo_document_for_index(chunk))
         metadatas.append(
             _clean_metadata(
                 {

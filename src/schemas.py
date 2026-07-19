@@ -9,9 +9,21 @@ class PaperChunk(BaseModel):
     chunk_id: str = Field(..., description="Stable identifier for a paper text chunk.")
     content: str
     page_num: int = Field(..., ge=1)
+    page_end: int | None = Field(default=None, ge=1)
     section_title: str | None = None
+    chunking_strategy: str = "section"
     source_type: Literal["paper"] = "paper"
     source_file: str | None = None
+
+
+class PdfTextQuality(BaseModel):
+    page_count: int = Field(..., ge=0)
+    extracted_pages: int = Field(..., ge=0)
+    low_text_pages: int = Field(..., ge=0)
+    avg_chars_per_page: float = Field(..., ge=0)
+    readable_char_ratio: float = Field(..., ge=0, le=1)
+    needs_ocr: bool = False
+    message: str
 
 
 class RepoChunk(BaseModel):
@@ -78,6 +90,7 @@ class AgentAnswer(BaseModel):
     paper_evidence: list[AnswerEvidence] = Field(default_factory=list)
     repo_evidence: list[AnswerEvidence] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
+    follow_up_questions: list[str] = Field(default_factory=list)
 
 
 class AuditAnswer(BaseModel):

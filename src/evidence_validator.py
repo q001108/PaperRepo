@@ -4,6 +4,9 @@ from src.dataset import normalize_github_url
 from src.schemas import RetrievedChunk
 
 
+EXCLUDED_PAPER_SECTIONS = {"references", "参考文献"}
+
+
 def filter_valid_evidence(
     retrieved_chunks: list[RetrievedChunk],
     dataset_id: str,
@@ -20,6 +23,9 @@ def filter_valid_evidence(
             continue
 
         if chunk.source_type == "paper":
+            section_title = str(metadata.get("section_title", "")).strip().lower()
+            if section_title in EXCLUDED_PAPER_SECTIONS:
+                continue
             valid_chunks.append(chunk)
             continue
 

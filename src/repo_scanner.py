@@ -55,6 +55,28 @@ def is_key_file_path(file_path: str) -> bool:
     )
 
 
+def _find_cached_repository(repo_url: str, destination_root: Path = REPO_CACHE_DIR) -> Path | None:
+    if not destination_root.exists():
+        return None
+
+    cached_paths = sorted(
+        (path for path in destination_root.iterdir() if path.is_dir()),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for path in cached_paths:
+        try:
+            repo = Repo(path)
+            origin_url = next(repo.remote("origin").urls)
+        except Exception:
+            continue
+
+        if normalize_github_url(origin_url) == repo_url:
+            return path
+
+    return None
+
+
 def clone_repository(repo_url: str, destination_root: Path = REPO_CACHE_DIR) -> Path:
     """Clone a public GitHub repository without executing repository code."""
     validated_url = validate_github_url(repo_url)
@@ -73,6 +95,17 @@ def clone_repository(repo_url: str, destination_root: Path = REPO_CACHE_DIR) -> 
         )
     except GitCommandError as exc:
         shutil.rmtree(destination_path, ignore_errors=True)
+        cached_path = _find_cached_repository(validated_url, destination_root)
+        if cached_path is not None:
+            logger.warning(
+                "Unable to clone %s; using cached repository at %s. Git error: %s",
+                validated_url,
+                cached_path,
+                exc,
+            )
+            return cached_path
+
+        logger.warning("Unable to clone %s. Git error: %s", validated_url, exc)
         raise ValueError("Unable to clone the GitHub repository. Confirm it is public and reachable.") from exc
     except Exception:
         shutil.rmtree(destination_path, ignore_errors=True)

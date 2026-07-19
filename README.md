@@ -55,7 +55,7 @@ Core modules:
 
 - `src/pdf_parser.py`: page-aware PDF text extraction.
 - `src/repo_scanner.py`: static repository scanning with file-count and size limits.
-- `src/embeddings.py`: configurable embedding function. The default is local hash embedding.
+- `src/embeddings.py`: configurable embedding function. The recommended local provider is `sentence_transformers`.
 - `src/indexer.py`: Chroma persistence and chunk upsert.
 - `src/retriever.py`: Top-K retrieval with `source_type` filtering.
 - `src/dataset.py`: PDF hash, normalized GitHub URL, and `dataset_id` helpers.
@@ -79,7 +79,7 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-The default embedding provider is local hash embedding, so the demo can run without an API key.
+The recommended local embedding provider is `sentence_transformers`, which does not need an API key but downloads a local model on first use.
 
 Configure runtime values in `.env`:
 
@@ -87,16 +87,27 @@ Configure runtime values in `.env`:
 OPENAI_API_KEY=
 GITHUB_TOKEN=
 LOG_LEVEL=INFO
-EMBEDDING_PROVIDER=hash
-EMBEDDING_MODEL=
+EMBEDDING_PROVIDER=sentence_transformers
+EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 EMBEDDING_DIMENSIONS=384
+SENTENCE_TRANSFORMERS_DEVICE=
 CHROMA_PATH=.chroma
-CHROMA_COLLECTION=paperrepo_evidence
+CHROMA_COLLECTION=paperrepo_evidence_minilm
 LLM_ROUTER_PROVIDER=
 LLM_ROUTER_MODEL=
 ```
 
 API keys must stay in `.env`; do not place them in source files.
+
+If the local model is too slow or you want to test only the software flow, switch back to:
+
+```text
+EMBEDDING_PROVIDER=hash
+EMBEDDING_MODEL=
+CHROMA_COLLECTION=paperrepo_evidence_hash
+```
+
+When changing embedding models, use a new `CHROMA_COLLECTION` or delete `.chroma/`, because Chroma collections expect a consistent vector dimension.
 
 ## Start
 
@@ -150,7 +161,7 @@ python -m pip check
 
 ## Known Limitations
 
-- Hash embeddings are only for local demo behavior. Replace them before serious semantic evaluation.
+- The MiniLM embedding model is lightweight and suitable for local demo evaluation, but stronger models may improve retrieval quality.
 - PDF parsing depends on extractable text; scanned image PDFs need OCR, which is not implemented.
 - Section title extraction is currently not implemented.
 - Repository scanning is static and intentionally does not execute code.

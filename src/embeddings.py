@@ -4,6 +4,7 @@ import hashlib
 import math
 import os
 import re
+from typing import Any
 
 from chromadb import Documents, EmbeddingFunction, Embeddings
 
@@ -37,6 +38,41 @@ class HashEmbeddingFunction(EmbeddingFunction):
         return [value / norm for value in vector]
 
 
+class SentenceTransformerEmbeddingFunction(EmbeddingFunction):
+    """Embedding function backed by a local sentence-transformers model."""
+
+    def __init__(self, model_name: str, device: str | None = None) -> None:
+        if not model_name:
+            raise ValueError("EMBEDDING_MODEL is required when EMBEDDING_PROVIDER=sentence_transformers.")
+        self.model_name = model_name
+        self.device = device
+        self._model: Any | None = None
+
+    def __call__(self, input: Documents) -> Embeddings:
+        model = self._load_model()
+        embeddings = model.encode(
+            list(input),
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        return embeddings.tolist()
+
+    def _load_model(self):
+        if self._model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError as exc:
+                raise ValueError(
+                    "sentence-transformers is not installed. Run `pip install -r requirements.txt` "
+                    "after adding EMBEDDING_PROVIDER=sentence_transformers."
+                ) from exc
+
+            kwargs = {"device": self.device} if self.device else {}
+            self._model = SentenceTransformer(self.model_name, **kwargs)
+        return self._model
+
+
 def get_embedding_function() -> EmbeddingFunction:
     provider = os.getenv("EMBEDDING_PROVIDER", "").strip().lower()
     model_name = os.getenv("EMBEDDING_MODEL", "").strip()
@@ -45,7 +81,11 @@ def get_embedding_function() -> EmbeddingFunction:
         dimensions = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))
         return HashEmbeddingFunction(dimensions=dimensions, model_name=model_name)
 
+    if provider in {"sentence_transformers", "sentence-transformers", "st"}:
+        device = os.getenv("SENTENCE_TRANSFORMERS_DEVICE", "").strip() or None
+        return SentenceTransformerEmbeddingFunction(model_name=model_name, device=device)
+
     raise ValueError(
         f"Embedding provider '{provider}' is not configured in this demo. "
-        "Set EMBEDDING_PROVIDER=hash, or extend src/embeddings.py with your provider."
+        "Set EMBEDDING_PROVIDER=hash or EMBEDDING_PROVIDER=sentence_transformers."
     )

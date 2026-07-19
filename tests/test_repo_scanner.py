@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from src.repo_scanner import is_key_file_path, scan_repository_path
+from git import GitCommandError, Repo
+
+from src.repo_scanner import clone_repository, is_key_file_path, scan_repository_path
 
 
 def test_scan_repository_path_reads_only_allowed_static_files(tmp_path: Path):
@@ -36,3 +38,20 @@ def test_scan_repository_path_respects_file_size_limit(tmp_path: Path):
 
     assert "small.py" in file_paths
     assert "large.py" not in file_paths
+
+
+def test_clone_repository_uses_cached_repo_when_network_clone_fails(tmp_path: Path, monkeypatch):
+    repo_url = "https://github.com/example/project"
+    cached_repo = tmp_path / "repo-cached"
+    cached_repo.mkdir()
+    repo = Repo.init(cached_repo)
+    repo.create_remote("origin", repo_url)
+
+    def fail_clone(*args, **kwargs):
+        raise GitCommandError("clone", 128, stderr="Recv failure: Connection was reset")
+
+    monkeypatch.setattr(Repo, "clone_from", fail_clone)
+
+    resolved_path = clone_repository(repo_url, destination_root=tmp_path)
+
+    assert resolved_path == cached_repo
